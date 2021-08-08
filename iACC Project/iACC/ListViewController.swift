@@ -4,9 +4,52 @@
 
 import UIKit
 
+// any kind of abstraction that hides implementation details
+// the common solution is to use a protocol
+
+//protocol APIService {
+    
+    // instead of accessing the dependencies directly through singletons we could inject this dependency into the ListVC
+
+    // instead of the ListVC depending on the concrete friendsAPI, Cache and so on we can use a protocol which is an abstraction to invert the dependency
+    
+//    func loadFriends(completion: @escaping (Result<[Friend], Error>) -> Void)
+//    func loadCards(completion: @escaping (Result<[Card], Error>) -> Void)
+//    func loadTransfers(completion: @escaping (Result<[Transfer], Error>) -> Void)
+    
+     
+    // This protocol violates the Interface segregation principle which means "clients shouldn't depend on methods they do not need"
+//}
+
+// The Interface segregation principle
+// you should separate unrelated methods into separate interfaces(separate abstractions)
+
+protocol FriendsService {
+    func loadFriends(completion: @escaping (Result<[Friend], Error>) -> Void)
+}
+
+protocol CardsService {
+    func loadCards(completion: @escaping (Result<[Card], Error>) -> Void)
+}
+
+protocol TransfersService {
+    func loadTransfers(completion: @escaping (Result<[Transfer], Error>) -> Void)
+}
+
+
 class ListViewController: UITableViewController {
 	var items = [ItemViewModel]()
 	
+//    var service: APIService? // use dependency instead of accessing the singletons directly
+    // vc would talk indirectly to the dependencies through the protocol(abstraction)
+    // which is allows to us to replace the implementation without having to change the vc
+    // we can easily replace this during tests instead of trying to globally mock all network requests.
+    // can simply inject here an implementation a testable mock or a stub (makes testing easier without issues with global dependencies. so we can run tests faster and parallel concurrently)
+    
+    var friendsService: FriendsService?
+    var cardService: CardsService?
+    var transfereService: TransfersService?
+    
 	var retryCount = 0
 	var maxRetryCount = 0
 	var shouldRetry = false
@@ -68,7 +111,15 @@ class ListViewController: UITableViewController {
 	@objc private func refresh() {
 		refreshControl?.beginRefreshing()
 		if fromFriendsScreen {
-			FriendsAPI.shared.loadFriends { [weak self] result in
+            // Dependency inversion principle states that high-level components should not depend on low-level details. both high-level components and low-level components should depend on abstractions.
+            
+            // with the dependencies pointing from low-level to high-level -> need an abstraction to separate the concrete types
+            
+            // common abstraction -> can use protocol, class, closure
+            
+//			FriendsAPI.shared.loadFriends { [weak self] result in
+            
+            friendsService?.loadFriends { [weak self] result in
 				DispatchQueue.mainAsyncIfNeeded {
                     self?.handleAPIResult(result.map { items in
                         
@@ -86,7 +137,8 @@ class ListViewController: UITableViewController {
 				}
 			}
 		} else if fromCardsScreen {
-			CardAPI.shared.loadCards { [weak self] result in
+//			CardAPI.shared.loadCards { [weak self] result in
+            cardService?.loadCards { [weak self] result in
 				DispatchQueue.mainAsyncIfNeeded {
                     self?.handleAPIResult(result.map { items in
                         items.map { item in
@@ -99,7 +151,9 @@ class ListViewController: UITableViewController {
 			}
 		} else if fromSentTransfersScreen || fromReceivedTransfersScreen {
             // to need to know the context, capture the boolean context in the closure([weak self, ...])
-			TransfersAPI.shared.loadTransfers { [weak self, longDateStyle, fromSentTransfersScreen] result in
+//			TransfersAPI.shared.loadTransfers { [weak self, longDateStyle, fromSentTransfersScreen] result in
+            
+            transfereService?.loadTransfers { [weak self, longDateStyle, fromSentTransfersScreen] result in
 				DispatchQueue.mainAsyncIfNeeded {
                     self?.handleAPIResult(result.map { items in
 //                        var filteredItems = items
