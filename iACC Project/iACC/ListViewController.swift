@@ -77,23 +77,6 @@ class ListViewController: UITableViewController {
 		
 		refreshControl = UIRefreshControl()
 		refreshControl?.addTarget(self, action: #selector(refresh), for: .valueChanged)
-		
-        if fromSentTransfersScreen {
-			shouldRetry = true
-			maxRetryCount = 1
-			longDateStyle = true
-
-			navigationItem.title = "Sent"
-			navigationItem.rightBarButtonItem = UIBarButtonItem(title: "Send", style: .done, target: self, action: #selector(sendMoney))
-
-		} else if fromReceivedTransfersScreen {
-			shouldRetry = true
-			maxRetryCount = 1
-			longDateStyle = false
-			
-			navigationItem.title = "Received"
-			navigationItem.rightBarButtonItem = UIBarButtonItem(title: "Request", style: .done, target: self, action: #selector(requestMoney))
-		}
 	}
 	
 	override func viewWillAppear(_ animated: Bool) {
@@ -106,14 +89,13 @@ class ListViewController: UITableViewController {
 	
 	@objc private func refresh() {
 		refreshControl?.beginRefreshing()
-		if fromFriendsScreen {
-            
+//		if fromFriendsScreen {
             // we don't need to access API directly
 //            service = FriendsAPIItemsServiceAdapter(api: FriendsAPI.shared, cache: (UIApplication.shared.connectedScenes.first?.delegate as! SceneDelegate).cache, isPremium: User.shared?.isPremium == true, select: { [weak self] item in
 //                self?.select(friend: item)
 //            })
 //            
-            service?.loadItems(completion: handleAPIResult)
+//            service?.loadItems(completion: handleAPIResult)
             
             // Dependency inversion principle states that high-level components should not depend on low-level details. both high-level components and low-level components should depend on abstractions.
             
@@ -141,7 +123,7 @@ class ListViewController: UITableViewController {
 //			}
             
             
-		} else if fromCardsScreen {
+//		} else if fromCardsScreen {
 //			CardAPI.shared.loadCards { [weak self] result in
 //				DispatchQueue.mainAsyncIfNeeded {
 //                    self?.handleAPIResult(result.map { items in
@@ -153,37 +135,38 @@ class ListViewController: UITableViewController {
 //                    })
 //				}
 //			}
-            service?.loadItems(completion: handleAPIResult)
+//            service?.loadItems(completion: handleAPIResult)
             
-		} else if fromSentTransfersScreen || fromReceivedTransfersScreen {
+//		} else if fromSentTransfersScreen || fromReceivedTransfersScreen {
             // to need to know the context, capture the boolean context in the closure([weak self, ...])
-			TransfersAPI.shared.loadTransfers { [weak self, longDateStyle, fromSentTransfersScreen] result in
-				DispatchQueue.mainAsyncIfNeeded {
-                    self?.handleAPIResult(result.map { items in
-//                        var filteredItems = items
-                        // filter the array of models
-//                        if fromSentTransfersScreen {
-//                            filteredItems = filteredItems.filter(\.isSender)
-//                        } else {
-//                            filteredItems = filteredItems.filter { !$0.isSender }
+//			TransfersAPI.shared.loadTransfers { [weak self, longDateStyle, fromSentTransfersScreen] result in
+//				DispatchQueue.mainAsyncIfNeeded {
+//                    self?.handleAPIResult(result.map { items in
+////                        var filteredItems = items
+//                        // filter the array of models
+////                        if fromSentTransfersScreen {
+////                            filteredItems = filteredItems.filter(\.isSender)
+////                        } else {
+////                            filteredItems = filteredItems.filter { !$0.isSender }
+////                        }
+//
+////                        return filteredItems
+//                        items
+//                            .filter { fromSentTransfersScreen ? $0.isSender : !$0.isSender }
+//                            .map { item in
+//                            ItemViewModel(transfer: item,
+//                                          longDateStyle: longDateStyle,
+//                                          selection: {
+//                                self?.select(transfer: item)
+//                            })
 //                        }
-                        
-//                        return filteredItems
-                        items
-                            .filter { fromSentTransfersScreen ? $0.isSender : !$0.isSender }
-                            .map { item in
-                            ItemViewModel(transfer: item,
-                                          longDateStyle: longDateStyle,
-                                          selection: {
-                                self?.select(transfer: item)
-                            })
-                        }
-                    })
-				}
-			}
-		} else {
-			fatalError("unknown context")
-		}
+//                    })
+//				}
+//			}
+            service?.loadItems(completion: handleAPIResult)
+//		} else {
+//			fatalError("unknown context")
+//		}
 	}
 	
 	private func handleAPIResult(_ result: Result<[ItemViewModel], Error>) {

@@ -75,13 +75,33 @@ class MainTabBarController: UITabBarController {
 	
 	private func makeSentTransfersList() -> ListViewController {
 		let vc = ListViewController()
-		vc.fromSentTransfersScreen = true
+		vc.fromSentTransfersScreen = true        
+        vc.shouldRetry = true
+        vc.maxRetryCount = 1
+        vc.longDateStyle = true
+
+        vc.navigationItem.title = "Sent"
+        vc.navigationItem.rightBarButtonItem = UIBarButtonItem(title: "Send", style: .done, target: vc, action: #selector(sendMoney))
+        
+        vc.service = SentTransferAPIItemsServiceAdapter(api: TransfersAPI.shared, select: { [weak vc] item in
+            vc?.select(transfer: item)
+        })
+
 		return vc
 	}
 	
 	private func makeReceivedTransfersList() -> ListViewController {
 		let vc = ListViewController()
 		vc.fromReceivedTransfersScreen = true
+        vc.shouldRetry = true
+        vc.maxRetryCount = 1
+        vc.longDateStyle = false 
+        vc.navigationItem.title = "Received"
+        vc.navigationItem.rightBarButtonItem = UIBarButtonItem(title: "Request", style: .done, target: self, action: #selector(requestMoney))
+        
+        vc.service = ReceivedTransferAPIItemsServiceAdapter(api: TransfersAPI.shared, select: { [weak vc] item in
+            vc?.select(transfer: item)
+        })
 		return vc
 	}
 	
@@ -176,5 +196,80 @@ struct CardAPIItemsServiceAdapter: ItemService {
             }
         }
     }
-    
 }
+
+
+struct SentTransferAPIItemsServiceAdapter: ItemService {
+    
+    let api: TransfersAPI // API dependency
+//    let longDateStyle: Bool
+//    let fromSentTransfersScreen: Bool
+    let select: (Transfer) -> Void
+    
+    func loadItems(completion: @escaping (Result<[ItemViewModel], Error>) -> Void) {
+        api.loadTransfers { result in
+            DispatchQueue.mainAsyncIfNeeded {
+                completion(result.map { items in
+//                        var filteredItems = items
+                    // filter the array of models
+//                        if fromSentTransfersScreen {
+//                            filteredItems = filteredItems.filter(\.isSender)
+//                        } else {
+//                            filteredItems = filteredItems.filter { !$0.isSender }
+//                        }
+                    
+//                        return filteredItems
+                    items
+//                        .filter { fromSentTransfersScreen ? $0.isSender : !$0.isSender }
+                        .filter { $0.isSender }
+                        .map { item in
+                        ItemViewModel(transfer: item,
+                                      longDateStyle: true,
+                                      selection: {
+                            select(item)
+                        })
+                    }
+                })
+            }
+        }
+    }    
+}
+
+
+
+struct ReceivedTransferAPIItemsServiceAdapter: ItemService {
+    
+    let api: TransfersAPI // API dependency
+//    let longDateStyle: Bool
+//    let fromSentTransfersScreen: Bool
+    let select: (Transfer) -> Void
+    
+    func loadItems(completion: @escaping (Result<[ItemViewModel], Error>) -> Void) {
+        api.loadTransfers { result in
+            DispatchQueue.mainAsyncIfNeeded {
+                completion(result.map { items in
+//                        var filteredItems = items
+                    // filter the array of models
+//                        if fromSentTransfersScreen {
+//                            filteredItems = filteredItems.filter(\.isSender)
+//                        } else {
+//                            filteredItems = filteredItems.filter { !$0.isSender }
+//                        }
+                    
+//                        return filteredItems
+                    items
+//                        .filter { fromSentTransfersScreen ? $0.isSender : !$0.isSender }
+                        .filter { !$0.isSender }
+                        .map { item in
+                        ItemViewModel(transfer: item,
+                                      longDateStyle: false ,
+                                      selection: {
+                            select(item)
+                        })
+                    }
+                })
+            }
+        }
+    }
+}
+
