@@ -70,19 +70,57 @@ class ListViewController: UITableViewController {
 		if fromFriendsScreen {
 			FriendsAPI.shared.loadFriends { [weak self] result in
 				DispatchQueue.mainAsyncIfNeeded {
-					self?.handleAPIResult(result)
+                    self?.handleAPIResult(result.map { items in
+                        
+                        if User.shared?.isPremium == true {
+                            (UIApplication.shared.connectedScenes.first?.delegate as! SceneDelegate).cache.save(items)
+                        }
+                        
+                        return items.map { item in
+                            ItemViewModel(friend: item, selection: {
+                                // in this context, we know the concrete type. doesn't need to convert it to Any
+                                self?.select(friend: item)
+                            })
+                        }
+                    })
 				}
 			}
 		} else if fromCardsScreen {
 			CardAPI.shared.loadCards { [weak self] result in
 				DispatchQueue.mainAsyncIfNeeded {
-					self?.handleAPIResult(result)
+                    self?.handleAPIResult(result.map { items in
+                        items.map { item in
+                            ItemViewModel(card: item, selection: {
+                                self?.select(card: item)
+                            })
+                        }
+                    })
 				}
 			}
 		} else if fromSentTransfersScreen || fromReceivedTransfersScreen {
-			TransfersAPI.shared.loadTransfers { [weak self] result in
+            // to need to know the context, capture the boolean context in the closure([weak self, ...])
+			TransfersAPI.shared.loadTransfers { [weak self, longDateStyle, fromSentTransfersScreen] result in
 				DispatchQueue.mainAsyncIfNeeded {
-					self?.handleAPIResult(result)
+                    self?.handleAPIResult(result.map { items in
+//                        var filteredItems = items
+                        // filter the array of models
+//                        if fromSentTransfersScreen {
+//                            filteredItems = filteredItems.filter(\.isSender)
+//                        } else {
+//                            filteredItems = filteredItems.filter { !$0.isSender }
+//                        }
+                        
+//                        return filteredItems
+                        items
+                            .filter { fromSentTransfersScreen ? $0.isSender : !$0.isSender }
+                            .map { item in
+                            ItemViewModel(transfer: item,
+                                          longDateStyle: longDateStyle,
+                                          selection: {
+                                self?.select(transfer: item)
+                            })
+                        }
+                    })
 				}
 			}
 		} else {
@@ -90,36 +128,27 @@ class ListViewController: UITableViewController {
 		}
 	}
 	
-	private func handleAPIResult<T>(_ result: Result<[T], Error>) {
+	private func handleAPIResult(_ result: Result<[ItemViewModel], Error>) {
 		switch result {
 		case let .success(items):
-			if fromFriendsScreen && User.shared?.isPremium == true {
-				(UIApplication.shared.connectedScenes.first?.delegate as! SceneDelegate).cache.save(items as! [Friend])
-			}
 			self.retryCount = 0
-			
-			var filteredItems = items as [Any]
-			if let transfers = items as? [Transfer] {
-				if fromSentTransfersScreen {
-					filteredItems = transfers.filter(\.isSender)
-				} else {
-					filteredItems = transfers.filter { !$0.isSender }
-				}
-			}
-			
-            self.items = filteredItems.map { item in // map will iterate to the list of filteredItems
-                return ItemViewModel(item, longDateStyle: longDateStyle, selection: { [weak self] in // hold a reference to self
-                   if let friend = item as? Friend {
-                    self?.select(friend: friend)
-                   } else if let card = item as? Card {
-                    self?.select(card: card)
-                   } else if let transfer = item as? Transfer {
-                    self?.select(transfer: transfer  )
-                   } else {
-                       fatalError("unknown item: \(item)")
-                   }
-                })
-            }
+            
+            // don't need to map here anymore cause we're mapping where we have context
+//            self.items = filteredItems.map { item in // map will iterate to the list of filteredItems
+//                return ItemViewModel(item, longDateStyle: longDateStyle, selection: { [weak self] in // hold a reference to self
+//                   if let friend = item as? Friend {
+//                    self?.select(friend: friend)
+//                   } else if let card = item as? Card {
+//                    self?.select(card: card)
+//                   } else if let transfer = item as? Transfer {
+//                    self?.select(transfer: transfer  )
+//                   } else {
+//                       fatalError("unknown item: \(item)")
+//                   }
+//                })
+//            }
+            
+            self.items = items
 			self.refreshControl?.endRefreshing()
 			self.tableView.reloadData()
 			
