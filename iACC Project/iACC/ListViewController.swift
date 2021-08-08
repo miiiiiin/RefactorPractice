@@ -213,17 +213,17 @@ struct ItemViewModel {
     var subtitle: String
     let select: () -> Void
     
-    init(_ item: Any, longDateStyle: Bool, selection: @escaping () -> Void) { // needs to be escaping because it's holding a reference (escapes the context)
-        if let friend = item as? Friend {
-            self.init(friend: friend, selection: selection)
-        } else if let card = item as? Card {
-            self.init(card: card, selection: selection)
-        } else if let transfer = item as? Transfer {
-            self.init(transfer, longDateStyle: longDateStyle, selection: selection )
-        } else {
-            fatalError("unknown item: \(item)")
-        }
-    }
+//    init(_ item: Any, longDateStyle: Bool, selection: @escaping () -> Void) { // needs to be escaping because it's holding a reference (escapes the context)
+//        if let friend = item as? Friend {
+//            self.init(friend: friend, selection: selection)
+//        } else if let card = item as? Card {
+//            self.init(card: card, selection: selection)
+//        } else if let transfer = item as? Transfer {
+//            self.init(transfer, longDateStyle: longDateStyle, selection: selection )
+//        } else {
+//            fatalError("unknown item: \(item)")
+//        }
+//    }
 }
 
 extension ItemViewModel {
