@@ -36,6 +36,61 @@ protocol TransfersService {
     func loadTransfers(completion: @escaping (Result<[Transfer], Error>) -> Void)
 }
 
+protocol ItemService {
+    // This is just an abstraction. not an implementation.
+    // This ListVC  needs a single sevice that can provide itemViewModels. regardless of from which API they come from. regardless of the data source(if it's coming from cache or network)
+    // this is the key and deciding which API to use as an implementation details. so the vc shouldn't know about
+    // this is the strategy pattern when you have single interface  in many different implementations or context
+    func loadItems(completion: @escaping (Result<[ItemViewModel], Error>) -> Void)
+}
+
+
+// if we make it as a struct. we get initializeer for free
+struct FriendsAPIItemsServiceAdapter: ItemService {
+//class FriendsAPIItemsServiceAdapter: ItemService {
+    
+    let api: FriendsAPI // API dependency
+    let cache: FriendsCache
+    let isPremium: Bool
+    
+    // need a dependency for selecting the friend
+    // we don't want adapter here depanding perform this logic so we can just define it as a closure
+    let select: (Friend) -> Void // could push vc, call api requests, could change the state of the database.
+    // that's up to whoever inject thid dependency here to decide
+    
+    // we can also define all the dependencies explicitly instead of accessing globally
+    
+    func loadItems(completion: @escaping (Result<[ItemViewModel], Error>) -> Void) {
+        // decouple the vc from a specific API
+//        FriendsAPI.shared.loadFriends { /*[weak self]*/ result in // doesn't neetd to be 'weak'. cause structs are not reference types
+        
+        api.loadFriends { result in 
+            DispatchQueue.mainAsyncIfNeeded {
+//                self?.handleAPIResult(result.map { items in
+                completion(result.map { items in
+                    
+//                    if User.shared?.isPremium == true {
+                    if isPremium { // we don't have to access User globally
+//                        (UIApplication.shared.connectedScenes.first?.delegate as! SceneDelegate).cache.save(items) // we don't need to access like this anymore
+                        cache.save(items)
+                        // it's up to however create the adapter to pass a cache as a dependency it's explicitly in the interface. you can only create an adapter if you give it a cache thus the adapter doesn't need to  access this cache globally which leads to the issue we described
+                    }
+                    
+                    return items.map { item in
+                        ItemViewModel(friend: item, selection: {
+                            // in this context, we know the concrete type. doesn't need to convert it to Any
+//                            self?.select(friend: item)
+                            // we use dependency injection here
+                            select(item)
+                        })
+                    }
+                })
+            }
+        }
+    }
+    
+    
+}
 
 class ListViewController: UITableViewController {
 	var items = [ItemViewModel]()
@@ -46,9 +101,11 @@ class ListViewController: UITableViewController {
     // we can easily replace this during tests instead of trying to globally mock all network requests.
     // can simply inject here an implementation a testable mock or a stub (makes testing easier without issues with global dependencies. so we can run tests faster and parallel concurrently)
     
-    var friendsService: FriendsService?
-    var cardService: CardsService?
-    var transfereService: TransfersService?
+//    var friendsService: FriendsService?
+//    var cardService: CardsService?
+//    var transfereService: TransfersService?
+    
+    var service: ItemService? // single service with the exact interface with precisely what the listVC needs
     
 	var retryCount = 0
 	var maxRetryCount = 0
@@ -111,34 +168,42 @@ class ListViewController: UITableViewController {
 	@objc private func refresh() {
 		refreshControl?.beginRefreshing()
 		if fromFriendsScreen {
+            
+            // we don't need to access API directly
+            service = FriendsAPIItemsServiceAdapter(api: FriendsAPI.shared, cache: (UIApplication.shared.connectedScenes.first?.delegate as! SceneDelegate).cache, isPremium: User.shared?.isPremium == true, select: { [weak self] item in
+                self?.select(friend: item)
+            })
+            
+            service?.loadItems(completion: handleAPIResult)
+            
             // Dependency inversion principle states that high-level components should not depend on low-level details. both high-level components and low-level components should depend on abstractions.
             
             // with the dependencies pointing from low-level to high-level -> need an abstraction to separate the concrete types
             
             // common abstraction -> can use protocol, class, closure
             
-//			FriendsAPI.shared.loadFriends { [weak self] result in
             
-            friendsService?.loadFriends { [weak self] result in
-				DispatchQueue.mainAsyncIfNeeded {
-                    self?.handleAPIResult(result.map { items in
-                        
-                        if User.shared?.isPremium == true {
-                            (UIApplication.shared.connectedScenes.first?.delegate as! SceneDelegate).cache.save(items)
-                        }
-                        
-                        return items.map { item in
-                            ItemViewModel(friend: item, selection: {
-                                // in this context, we know the concrete type. doesn't need to convert it to Any
-                                self?.select(friend: item)
-                            })
-                        }
-                    })
-				}
-			}
+//			FriendsAPI.shared.loadFriends { [weak self] result in
+//				DispatchQueue.mainAsyncIfNeeded {
+//                    self?.handleAPIResult(result.map { items in
+//
+//                        if User.shared?.isPremium == true {
+//                            (UIApplication.shared.connectedScenes.first?.delegate as! SceneDelegate).cache.save(items)
+//                        }
+//
+//                        return items.map { item in
+//                            ItemViewModel(friend: item, selection: {
+//                                // in this context, we know the concrete type. doesn't need to convert it to Any
+//                                self?.select(friend: item)
+//                            })
+//                        }
+//                    })
+//				}
+//			}
+            
+            
 		} else if fromCardsScreen {
-//			CardAPI.shared.loadCards { [weak self] result in
-            cardService?.loadCards { [weak self] result in
+			CardAPI.shared.loadCards { [weak self] result in
 				DispatchQueue.mainAsyncIfNeeded {
                     self?.handleAPIResult(result.map { items in
                         items.map { item in
@@ -151,9 +216,7 @@ class ListViewController: UITableViewController {
 			}
 		} else if fromSentTransfersScreen || fromReceivedTransfersScreen {
             // to need to know the context, capture the boolean context in the closure([weak self, ...])
-//			TransfersAPI.shared.loadTransfers { [weak self, longDateStyle, fromSentTransfersScreen] result in
-            
-            transfereService?.loadTransfers { [weak self, longDateStyle, fromSentTransfersScreen] result in
+			TransfersAPI.shared.loadTransfers { [weak self, longDateStyle, fromSentTransfersScreen] result in
 				DispatchQueue.mainAsyncIfNeeded {
                     self?.handleAPIResult(result.map { items in
 //                        var filteredItems = items
