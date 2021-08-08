@@ -78,15 +78,7 @@ class ListViewController: UITableViewController {
 		refreshControl = UIRefreshControl()
 		refreshControl?.addTarget(self, action: #selector(refresh), for: .valueChanged)
 		
-		if fromFriendsScreen {
-			shouldRetry = true
-			maxRetryCount = 2
-			
-			title = "Friends"
-			
-			navigationItem.rightBarButtonItem = UIBarButtonItem(barButtonSystemItem: .add, target: self, action: #selector(addFriend))
-			
-		} else if fromCardsScreen {
+        if fromCardsScreen {
 			shouldRetry = false
 			
 			title = "Cards"
@@ -394,4 +386,17 @@ extension UIViewController {
 //                self.presenterVC.present(alert, animated: true)
         showDetailViewController(alert, sender: self)
     }
+}
+
+
+// Null Object Pattern
+
+class NullFriendsCache: FriendsCache {
+    
+    override func save(_ newFriends: [Friend]) {
+//        super.save(newFriends ) // usually when you override the methods. you call super to keep the behavior
+    }
+    
+    // in this case we're not going to do anything. which means you will just ignore. that's the null object pattern. an instance sharing the same interface but that does nothing
+    
 }

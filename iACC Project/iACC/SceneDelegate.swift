@@ -17,6 +17,9 @@ class SceneDelegate: UIResponder, UIWindowSceneDelegate {
 	}
 	
 	func makeRootViewController() -> MainTabBarController {
-		MainTabBarController()
+//		MainTabBarController()
+        MainTabBarController(friendsCache: (UIApplication.shared.connectedScenes.first?.delegate as! SceneDelegate).cache)
+        
+        // instead of accessing the dependency directly in the sceneDelegate. we can pass dependencies explicitly/directly 
 	}
 }

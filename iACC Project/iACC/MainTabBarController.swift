@@ -5,9 +5,13 @@
 import UIKit
 
 class MainTabBarController: UITabBarController {
+    
+    private var friendsCache: FriendsCache! // explicit dependency
 	
-	convenience init() {
+    convenience init(friendsCache: FriendsCache) { // we need to provide one when you're creating this
+        // this is a dependency injection pattern called  constructor injection or initializer injection when you define statically in the initializer all the dependencies you need
 		self.init(nibName: nil, bundle: nil)
+        self.friendsCache = friendsCache
 		self.setupViewController()
 	}
 
@@ -54,7 +58,14 @@ class MainTabBarController: UITabBarController {
 	private func makeFriendsList() -> ListViewController {
 		let vc = ListViewController()
 		vc.fromFriendsScreen = true
-        vc.service = FriendsAPIItemsServiceAdapter(api: FriendsAPI.shared, cache: (UIApplication.shared.connectedScenes.first?.delegate as! SceneDelegate).cache, isPremium: User.shared?.isPremium == true, select: { [weak vc] item in
+        vc.shouldRetry = true
+        vc.maxRetryCount = 2
+        vc.title = "Friends"
+        vc.navigationItem.rightBarButtonItem = UIBarButtonItem(barButtonSystemItem: .add, target: vc, action: #selector(addFriend))
+        
+        let isPremium = User.shared?.isPremium == true
+        
+        vc.service = FriendsAPIItemsServiceAdapter(api: FriendsAPI.shared, cache: isPremium ?  friendsCache : NullFriendsCache(), select: { [weak vc] item in
             vc?.select(friend: item)
         })
         
@@ -92,7 +103,7 @@ struct FriendsAPIItemsServiceAdapter: ItemService {
     
     let api: FriendsAPI // API dependency
     let cache: FriendsCache
-    let isPremium: Bool
+//    let isPremium: Bool
     
     // need a dependency for selecting the friend
     // we don't want adapter here depanding perform this logic so we can just define it as a closure
@@ -111,11 +122,11 @@ struct FriendsAPIItemsServiceAdapter: ItemService {
                 completion(result.map { items in
                     
 //                    if User.shared?.isPremium == true {
-                    if isPremium { // we don't have to access User globally
+//                    if isPremium { // we don't have to access User globally
 //                        (UIApplication.shared.connectedScenes.first?.delegate as! SceneDelegate).cache.save(items) // we don't need to access like this anymore
                         cache.save(items)
                         // it's up to however create the adapter to pass a cache as a dependency it's explicitly in the interface. you can only create an adapter if you give it a cache thus the adapter doesn't need to  access this cache globally which leads to the issue we described
-                    }
+//                    }
                     
                     return items.map { item in
                         ItemViewModel(friend: item, selection: {
