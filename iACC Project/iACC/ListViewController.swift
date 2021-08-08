@@ -24,17 +24,17 @@ import UIKit
 // The Interface segregation principle
 // you should separate unrelated methods into separate interfaces(separate abstractions)
 
-protocol FriendsService {
-    func loadFriends(completion: @escaping (Result<[Friend], Error>) -> Void)
-}
-
-protocol CardsService {
-    func loadCards(completion: @escaping (Result<[Card], Error>) -> Void)
-}
-
-protocol TransfersService {
-    func loadTransfers(completion: @escaping (Result<[Transfer], Error>) -> Void)
-}
+//protocol FriendsService {
+//    func loadFriends(completion: @escaping (Result<[Friend], Error>) -> Void)
+//}
+//
+//protocol CardsService {
+//    func loadCards(completion: @escaping (Result<[Card], Error>) -> Void)
+//}
+//
+//protocol TransfersService {
+//    func loadTransfers(completion: @escaping (Result<[Transfer], Error>) -> Void)
+//}
 
 protocol ItemService {
     // This is just an abstraction. not an implementation.
@@ -45,52 +45,6 @@ protocol ItemService {
 }
 
 
-// if we make it as a struct. we get initializeer for free
-struct FriendsAPIItemsServiceAdapter: ItemService {
-//class FriendsAPIItemsServiceAdapter: ItemService {
-    
-    let api: FriendsAPI // API dependency
-    let cache: FriendsCache
-    let isPremium: Bool
-    
-    // need a dependency for selecting the friend
-    // we don't want adapter here depanding perform this logic so we can just define it as a closure
-    let select: (Friend) -> Void // could push vc, call api requests, could change the state of the database.
-    // that's up to whoever inject thid dependency here to decide
-    
-    // we can also define all the dependencies explicitly instead of accessing globally
-    
-    func loadItems(completion: @escaping (Result<[ItemViewModel], Error>) -> Void) {
-        // decouple the vc from a specific API
-//        FriendsAPI.shared.loadFriends { /*[weak self]*/ result in // doesn't neetd to be 'weak'. cause structs are not reference types
-        
-        api.loadFriends { result in 
-            DispatchQueue.mainAsyncIfNeeded {
-//                self?.handleAPIResult(result.map { items in
-                completion(result.map { items in
-                    
-//                    if User.shared?.isPremium == true {
-                    if isPremium { // we don't have to access User globally
-//                        (UIApplication.shared.connectedScenes.first?.delegate as! SceneDelegate).cache.save(items) // we don't need to access like this anymore
-                        cache.save(items)
-                        // it's up to however create the adapter to pass a cache as a dependency it's explicitly in the interface. you can only create an adapter if you give it a cache thus the adapter doesn't need to  access this cache globally which leads to the issue we described
-                    }
-                    
-                    return items.map { item in
-                        ItemViewModel(friend: item, selection: {
-                            // in this context, we know the concrete type. doesn't need to convert it to Any
-//                            self?.select(friend: item)
-                            // we use dependency injection here
-                            select(item)
-                        })
-                    }
-                })
-            }
-        }
-    }
-    
-    
-}
 
 class ListViewController: UITableViewController {
 	var items = [ItemViewModel]()
@@ -170,10 +124,10 @@ class ListViewController: UITableViewController {
 		if fromFriendsScreen {
             
             // we don't need to access API directly
-            service = FriendsAPIItemsServiceAdapter(api: FriendsAPI.shared, cache: (UIApplication.shared.connectedScenes.first?.delegate as! SceneDelegate).cache, isPremium: User.shared?.isPremium == true, select: { [weak self] item in
-                self?.select(friend: item)
-            })
-            
+//            service = FriendsAPIItemsServiceAdapter(api: FriendsAPI.shared, cache: (UIApplication.shared.connectedScenes.first?.delegate as! SceneDelegate).cache, isPremium: User.shared?.isPremium == true, select: { [weak self] item in
+//                self?.select(friend: item)
+//            })
+//            
             service?.loadItems(completion: handleAPIResult)
             
             // Dependency inversion principle states that high-level components should not depend on low-level details. both high-level components and low-level components should depend on abstractions.
