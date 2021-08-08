@@ -44,7 +44,7 @@ class MainTabBarController: UITabBarController {
 		let received = makeReceivedTransfersList()
 		received.navigationItem.title = "Received"
 		received.navigationItem.largeTitleDisplayMode = .always
-		
+        
 		let vc = SegmentNavigationViewController(first: sent, second: received)
 		vc.tabBarItem.image = UIImage(
 			systemName: "arrow.left.arrow.right",
@@ -57,58 +57,72 @@ class MainTabBarController: UITabBarController {
 	
 	private func makeFriendsList() -> ListViewController {
 		let vc = ListViewController()
-		vc.fromFriendsScreen = true
-        vc.shouldRetry = true
-        vc.maxRetryCount = 2
+//		vc.fromFriendsScreen = true
+//        vc.shouldRetry = true
+//        vc.maxRetryCount = 2
         vc.title = "Friends"
         vc.navigationItem.rightBarButtonItem = UIBarButtonItem(barButtonSystemItem: .add, target: vc, action: #selector(addFriend))
         
         let isPremium = User.shared?.isPremium == true
         
-        vc.service = FriendsAPIItemsServiceAdapter(api: FriendsAPI.shared, cache: isPremium ?  friendsCache : NullFriendsCache(), select: { [weak vc] item in
+        let api = FriendsAPIItemsServiceAdapter(api: FriendsAPI.shared, cache: isPremium ?  friendsCache : NullFriendsCache(), select: { [weak vc] item in
+            vc?.select(friend: item)
+        }).retry(2)
+        
+        // injecting this service into the ListVC. thus ListVC doesn't need to know the concrete type of that service
+        
+        let cache = FriendsCacheItemsServiceAdapter(
+            cache: friendsCache,
+            select: { [weak vc] item in
             vc?.select(friend: item)
         })
         
-        // injecting this service into the ListVC. thus ListVC doesn't need to know the concrete type of that service
+//        vc.service = ItemServiceWithFallBack(primary: api, fallBack: cache)
+        // it tries to load from the API. if it fails, it load from the cache
+//        vc.service = api.fallBack(cache)
+//        vc.service = isPremium ? api.fallBack(api).fallBack(cache) : api
+//        vc.service = isPremium ? api.retry(2).fallBack(cache) : api.retry(2)
+        vc.service = isPremium ? api.fallBack(cache) : api
 		return vc
 	}
 	
 	private func makeSentTransfersList() -> ListViewController {
 		let vc = ListViewController()
-		vc.fromSentTransfersScreen = true        
-        vc.shouldRetry = true
-        vc.maxRetryCount = 1
-        vc.longDateStyle = true
+//		vc.fromSentTransfersScreen = true
+//        vc.shouldRetry = true
+//        vc.maxRetryCount = 1
+//        vc.longDateStyle = true
 
         vc.navigationItem.title = "Sent"
         vc.navigationItem.rightBarButtonItem = UIBarButtonItem(title: "Send", style: .done, target: vc, action: #selector(sendMoney))
         
+        
         vc.service = SentTransferAPIItemsServiceAdapter(api: TransfersAPI.shared, select: { [weak vc] item in
             vc?.select(transfer: item)
-        })
+        }).retry(1)
 
 		return vc
 	}
 	
 	private func makeReceivedTransfersList() -> ListViewController {
 		let vc = ListViewController()
-		vc.fromReceivedTransfersScreen = true
-        vc.shouldRetry = true
-        vc.maxRetryCount = 1
-        vc.longDateStyle = false 
+//		vc.fromReceivedTransfersScreen = true
+//        vc.shouldRetry = true
+//        vc.maxRetryCount = 1
+//        vc.longDateStyle = false 
         vc.navigationItem.title = "Received"
-        vc.navigationItem.rightBarButtonItem = UIBarButtonItem(title: "Request", style: .done, target: self, action: #selector(requestMoney))
+        vc.navigationItem.rightBarButtonItem = UIBarButtonItem(title: "Request", style: .done, target: vc, action: #selector(requestMoney))
         
         vc.service = ReceivedTransferAPIItemsServiceAdapter(api: TransfersAPI.shared, select: { [weak vc] item in
             vc?.select(transfer: item)
-        })
+        }).retry(1)
 		return vc
 	}
 	
 	private func makeCardsList() -> ListViewController {
 		let vc = ListViewController()
-		vc.fromCardsScreen = true
-        vc.shouldRetry = false
+//		vc.fromCardsScreen = true
+//        vc.shouldRetry = false
         vc.title = "Cards"
         vc.navigationItem.rightBarButtonItem = UIBarButtonItem(barButtonSystemItem: .add, target: vc, action: #selector(addCard))
         
@@ -273,3 +287,60 @@ struct ReceivedTransferAPIItemsServiceAdapter: ItemService {
     }
 }
 
+
+struct FriendsCacheItemsServiceAdapter: ItemService {
+    
+    let cache: FriendsCache
+    let select: (Friend) -> Void
+    
+    func loadItems(completion: @escaping (Result<[ItemViewModel], Error>) -> Void) {
+        cache.loadFriends { result in
+            DispatchQueue.mainAsyncIfNeeded {
+                completion(result.map { items in
+                    items.map { item in
+                        ItemViewModel(friend: item, selection: {
+                            select(item)
+                        })
+                    }
+                })
+            }
+        }
+    }
+}
+
+struct ItemServiceWithFallBack: ItemService {
+    
+    // two services that implement the same interface
+    
+    let primary: ItemService
+    let fallBack: ItemService
+    
+    // this composite will compose two implementations of itemService that could be any implementation that could be an API
+    
+    func loadItems(completion: @escaping (Result<[ItemViewModel], Error>) -> Void) {
+        primary.loadItems { result in
+            switch result {
+            case .success:
+                completion(result)
+                
+            case .failure:
+                fallBack.loadItems(completion: completion)
+            }
+        }
+    }
+}
+
+extension ItemService {
+    func fallBack(_ fallback: ItemService) -> ItemService {
+        ItemServiceWithFallBack(primary: self, fallBack: fallback)
+    }
+    
+    func retry(_ retryCount: UInt) -> ItemService {
+        var service: ItemService = self
+        for _ in 0..<retryCount {
+            service = service.fallBack(self)
+        }
+        return service
+    }
+    
+}

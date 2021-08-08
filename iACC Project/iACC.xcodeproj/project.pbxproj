@@ -43,6 +43,7 @@
 		08927BD4268618AC009195BD /* User.swift in Sources */ = {isa = PBXBuildFile; fileRef = 08927BCA268618AC009195BD /* User.swift */; };
 		08927BD5268618AC009195BD /* FriendsAPI.swift in Sources */ = {isa = PBXBuildFile; fileRef = 08927BCB268618AC009195BD /* FriendsAPI.swift */; };
 		08927BD6268618AC009195BD /* NotImplementedViewControllers.swift in Sources */ = {isa = PBXBuildFile; fileRef = 08927BCC268618AC009195BD /* NotImplementedViewControllers.swift */; };
+		3851893426C045BE00D67B0D /* Extensions+UIViewController.swift in Sources */ = {isa = PBXBuildFile; fileRef = 3851893326C045BE00D67B0D /* Extensions+UIViewController.swift */; };
 /* End PBXBuildFile section */
 
 /* Begin PBXContainerItemProxy section */
@@ -96,6 +97,7 @@
 		08927BCA268618AC009195BD /* User.swift */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.swift; path = User.swift; sourceTree = "<group>"; };
 		08927BCB268618AC009195BD /* FriendsAPI.swift */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.swift; path = FriendsAPI.swift; sourceTree = "<group>"; };
 		08927BCC268618AC009195BD /* NotImplementedViewControllers.swift */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.swift; path = NotImplementedViewControllers.swift; sourceTree = "<group>"; };
+		3851893326C045BE00D67B0D /* Extensions+UIViewController.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = "Extensions+UIViewController.swift"; sourceTree = "<group>"; };
 /* End PBXFileReference section */
 
 /* Begin PBXFrameworksBuildPhase section */
@@ -232,6 +234,7 @@
 				08927BC6268618AC009195BD /* CardAPI.swift */,
 				080833E1268F69C200A8099A /* ArticlesAPI.swift */,
 				08927BC22686185C009195BD /* Supporting Files */,
+				3851893326C045BE00D67B0D /* Extensions+UIViewController.swift */,
 			);
 			path = iACC;
 			sourceTree = "<group>";
@@ -370,6 +373,7 @@
 				080833E2268F69C200A8099A /* ArticlesAPI.swift in Sources */,
 				08927B952686183A009195BD /* SceneDelegate.swift in Sources */,
 				08927BD2268618AC009195BD /* TransfersAPI.swift in Sources */,
+				3851893426C045BE00D67B0D /* Extensions+UIViewController.swift in Sources */,
 				08927BD4268618AC009195BD /* User.swift in Sources */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
